@@ -1,0 +1,71 @@
+﻿@page "/todolist"
+@using TodoList2.Data
+@using Microsoft.EntityFrameworkCore
+@inject TodoItemDataContext TodoItemDataContext
+@rendermode InteractiveServer
+
+<PageTitle>Todo List</PageTitle>
+
+<h3>TodoList: (@todos.Count(todo => !todo.Completed)) tasks to complete </h3>
+
+<div class="mb-4">
+    <ul class="list-group">
+        @foreach (var todo in todos)
+        {
+            <li class="list-group-item d-flex w-100 flex-row">
+                <input class="form-check-input" type="checkbox" @bind="todo.Completed" @onclick="()=>PatchTodo(todo)"/>
+                <input class="form-check-label stretched-link px-3 border-0" @bind ="todo.Text" />
+                <button class="btn btn-danger btn-sm mr-3" @onclick="() => DeleteTodo(todo)">Delete</button>
+            </li>
+        }
+    </ul>
+</div>
+
+<div class="input-group flex-nowrap">
+    <input type="text" class="form-control"
+           placeholder="Write todo" aria-label="Write todo" @bind="newTodoText" />
+    <button class="btn btn-primary" @onclick="AddTodo">Add Todo</button>
+</div>
+
+@code {
+    private List<TodoItem> todos = new List<TodoItem>();
+    string newTodoText = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        todos = await TodoItemDataContext.TodoItems.ToListAsync();
+    }
+
+    private void AddTodo()
+    {
+        if (!string.IsNullOrWhiteSpace(newTodoText))
+        {
+            var todo = new TodoItem { Text = newTodoText};
+            TodoItemDataContext.TodoItems.Add(todo);
+            TodoItemDataContext.SaveChanges();
+            todos.Add(todo);
+            newTodoText = string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    void DeleteTodo(TodoItem todoToDelete)
+    {
+        TodoItemDataContext.TodoItems.Remove(todoToDelete);
+        TodoItemDataContext.SaveChanges();
+        todos.Remove(todoToDelete);
+        StateHasChanged();
+    }
+
+    void PatchTodo(TodoItem todoToPatch)
+    {
+        var itemToPatch = TodoItemDataContext.TodoItems.Find(todoToPatch.Id);
+        if (itemToPatch != null)
+        {
+            itemToPatch.Completed = !itemToPatch.Completed; 
+            TodoItemDataContext.Update(itemToPatch);
+            TodoItemDataContext.SaveChanges();
+            StateHasChanged();
+        }
+    }
+}

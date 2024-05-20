@@ -1,0 +1,214 @@
+﻿@page "/finance"
+@using TodoList2.Data
+@using Microsoft.EntityFrameworkCore;
+@inject TodoItemDataContext DataContext
+@rendermode InteractiveServer
+
+
+<PageTitle>Finance</PageTitle>
+<h3>Finance</h3>
+
+<h4>Your invoices</h4>
+<div class="mb-4">
+    <div style="max-height: 30vh; overflow-y: auto; display: block;">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Details</th>
+                    <th scope="col">To/From</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var invoice in invoices)
+                {
+
+                    <tr>
+                        <th scope="row">@invoice.Id</th>
+                        <td>@invoice.Details</td>
+                        <td>@invoice.ToFrom</td>
+                        <td>@invoice.Amount</td>
+                        <td><button class="btn btn-danger btn-sm" @onclick="() =>DeleteInvoice(invoice)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<h4>Your payments</h4>
+<div class="mb-4">
+ <div style="max-height: 30vh; overflow-y: auto; display: block;">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Details</th>
+                <th scope="col">To/From</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+                @foreach (var paym in payments)
+                {
+                <tr>
+                    <th scope="row">@paym.Id</th>
+                    <td>@paym.Details</td>
+                    <td>@paym.ToFrom</td>
+                    <td>@paym.Amount</td>
+                    <td><button class="btn btn-danger btn-sm" @onclick="() =>DeletePayment(paym)">Delete</button></td>
+                </tr>
+                }
+        </tbody>
+    </table>
+
+</div>
+</div>
+
+<div >
+    <p class="fs-3 fw-semibold text-decoration-underline text-success">Balance: @balance UAH</p>
+</div>
+
+
+<h3 class="mt-4">Enter New </h3>
+<div class="input-group mb-3">
+    <div class="mb-3">
+        <label for="type-finance" class="form-label">Select Invoice or Payment: </label>
+        <select id="type-finance" name="type-finance" class="form-select" style="background-color: var(--bs-teal);" required @bind="selectedType">
+            <option class="fs-5 p-2" value="invoice" style="background-color: #fff;">Invoice</option>
+            <option class="fs-5"value="payment" style="background-color: #fff;">Payment</option>
+        </select>
+    </div>
+</div>
+
+@if (selectedType == "invoice")
+{
+    <div class="input-group d-flex flex-column mb-3">
+    <div class="mb-3">
+        <input type="text" class="form-control" placeholder="Invoice Details" @bind="newInvoiceDetails" />
+    </div>
+    <div class="mb-3">
+        <input type="text" class="form-control" placeholder="To / From" @bind="newInvoiceToFrom" />
+    </div>
+    <div class="mb-3">
+        <input type="number" class="form-control" placeholder="Amount" @bind="newInvoiceAmount" />
+    </div>
+    <button class="btn" style="background-color: var(--bs-teal); border-radius: .25rem;" @onclick="AddInvoice">Add Invoice</button>
+</div>
+}
+else if (selectedType == "payment")
+{
+    <div class="input-group  d-flex flex-column mb-3">
+    <div class="mb-3">
+        <input type="text" class="form-control" placeholder="Payment Details" @bind="newPaymentDetails" />
+    </div>
+    <div class="mb-3"><input type="text" class="form-control" placeholder="To / From" @bind="newPaymentToFrom" /></div>
+    <div class="mb-3"><input type="number" class="form-control" @bind="newPaymentAmount" /></div>
+    <button class="btn btn-primary" @onclick="AddPayment">Add Payment</button>
+</div>
+}
+
+
+@code {
+
+    private string selectedType = "";
+    private double balance;
+    private List<Invoice> invoices = new List<Invoice>();
+    private List<Payment> payments = new List<Payment>();
+    string newInvoiceDetails = "";
+    string newInvoiceToFrom = "";
+    double newInvoiceAmount;
+    private string newPaymentDetails = "";
+    private string newPaymentToFrom = "";
+    private double newPaymentAmount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        invoices = await DataContext.Invoices.ToListAsync();
+        payments = await DataContext.Payments.ToListAsync();
+        CalculateBalance();
+    }
+
+    void AddInvoice()
+    {
+        if (
+        !string.IsNullOrWhiteSpace(newInvoiceDetails)
+        && newInvoiceAmount > 0
+        && !string.IsNullOrWhiteSpace(newInvoiceToFrom)
+        )
+        {
+            var invoice = new Invoice
+                {
+                    Details = newInvoiceDetails,
+                    ToFrom = newInvoiceToFrom,
+                    Amount = newInvoiceAmount
+                };
+
+            DataContext.Invoices.Add(invoice);
+            DataContext.SaveChanges();
+
+            invoices.Add(invoice);
+            newInvoiceDetails = string.Empty;
+            newInvoiceToFrom = string.Empty;
+            newInvoiceAmount = 0;
+            CalculateBalance();
+        }
+    }
+
+    void DeleteInvoice(Invoice invoiceToDelete)
+    {
+        DataContext.Invoices.Remove(invoiceToDelete);
+        DataContext.SaveChanges();
+        invoices.Remove(invoiceToDelete);
+        CalculateBalance();
+    }
+
+
+    //payments
+    void AddPayment()
+    {
+        if (
+        !string.IsNullOrWhiteSpace(newPaymentDetails)
+        && newPaymentAmount > 0
+        && !string.IsNullOrWhiteSpace(newPaymentToFrom)
+        )
+        {
+            var payment = new Payment
+                {
+                    Details = newPaymentDetails,
+                    ToFrom = newPaymentToFrom,
+                    Amount = newPaymentAmount
+                };
+
+            DataContext.Payments.Add(payment);
+            DataContext.SaveChanges();
+
+            payments.Add(payment);
+            newPaymentDetails = string.Empty;
+            newPaymentToFrom = string.Empty;
+            newPaymentAmount = 0;
+            CalculateBalance();
+        }
+    }
+
+    void DeletePayment(Payment paymentToDelete)
+    {
+        DataContext.Payments.Remove(paymentToDelete);
+        DataContext.SaveChanges();
+        payments.Remove(paymentToDelete);
+        CalculateBalance();
+    }
+
+    void CalculateBalance()
+    {
+        double totalInvoices = invoices.Sum(inv => inv.Amount ?? 0);
+        double totalPayments = payments.Sum(payment => payment.Amount ?? 0);
+        balance = totalInvoices - totalPayments;
+    }
+
+}
